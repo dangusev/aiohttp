@@ -1,7 +1,7 @@
 import asyncio
 import warnings
 from collections import MutableMapping
-from functools import partial
+from functools import partial, wraps
 
 from . import hdrs
 from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
@@ -276,7 +276,8 @@ class Application(MutableMapping):
                 for app in match_info.apps[::-1]:
                     for m, new_style in app._middlewares_handlers:
                         if new_style:
-                            handler = partial(m, handler=handler)
+                            wrapper = wraps(handler)
+                            handler = wrapper(partial(m, handler=handler))
                         else:
                             handler = await m(app, handler)
 

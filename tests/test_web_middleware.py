@@ -363,3 +363,27 @@ async def test_new_style_middleware_method(loop, test_client):
         assert 'OK[new style middleware]' == txt
 
     assert len(warning_checker) == 0
+
+
+async def test_middlewares_preserve_handler_attrs(loop, test_client):
+    async def handler(request):
+        return web.Response(text='OK')
+    test_attr = '_test_attr'
+    setattr(handler, test_attr, True)
+
+    def make_middleware(num):
+        @web.middleware
+        async def middleware(request, handler):
+            # Check that "test_attr" still presented in handler
+            # after passing through the chain of middlewares
+            assert getattr(handler, test_attr, False)
+            return await handler(request)
+        return middleware
+
+    app = web.Application()
+    app.middlewares.append(make_middleware(1))
+    app.middlewares.append(make_middleware(2))
+    app.middlewares.append(make_middleware(3))
+    app.router.add_route('GET', '/', handler)
+    client = await test_client(app)
+    await client.get('/')
